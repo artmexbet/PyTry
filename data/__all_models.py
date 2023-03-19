@@ -1,6 +1,8 @@
 from sqlalchemy import Column, orm, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, TEXT, DATE, JSON
+from werkzeug.security import generate_password_hash, check_password_hash
 from .database import Base
+import datetime
 import uuid
 
 
@@ -12,6 +14,14 @@ class Language(Base):
     path = Column(TEXT, nullable=False)
 
     courses = orm.relationship("Course", back_populates="language")
+
+    def __init__(self, name: str, path: str):
+        """
+        :param name: Название языка программирования
+        :param path: путь до сервера, на котором выполняется тестирование
+        """
+        self.name = name
+        self.path = path
 
 
 class Course(Base):
@@ -28,6 +38,22 @@ class Course(Base):
     users = orm.relationship("User", secondary="users_to_courses",
                              backref="users")
 
+    def __init__(self, name: str,
+                 description: str,
+                 pic: str,
+                 language_id: uuid.UUID):
+        """
+        :param name: Название курса
+        :param description: Описание курса
+        :param pic: Путь до картинки в папке static
+        :param language_id: UUID языка программирования,
+         на котором решается курс
+        """
+        self.name = name
+        self.description = description
+        self.pic = pic
+        self.language_id = language_id
+
 
 class Lesson(Base):
     __tablename__ = "lessons"
@@ -41,6 +67,16 @@ class Lesson(Base):
     links = orm.relationship("Link", back_populates="lesson")
     tasks = orm.relationship("Task", back_populates="lesson")
 
+    def __init__(self, name: str, description: str, course_id: uuid.UUID):
+        """
+        :param name: Название урока
+        :param description: Описание урока
+        :param course_id: UUID курса, к которому привязан урок
+        """
+        self.name = name
+        self.description = description
+        self.course_id = course_id
+
 
 class Link(Base):
     __tablename__ = "useful_links"
@@ -50,6 +86,14 @@ class Link(Base):
     link = Column(TEXT)
 
     lesson = orm.relationship("Lesson")
+
+    def __init__(self, link: str, lesson_id: uuid.UUID):
+        """
+        :param link: ссылка на ресурс
+        :param lesson_id: UUID урока, к которому привязана ссылка
+        """
+        self.link = link
+        self.lesson_id = lesson_id
 
 
 class Task(Base):
@@ -63,6 +107,21 @@ class Task(Base):
 
     lesson = orm.relationship("Lesson")
     solves = orm.relationship("Solve", back_populates="task")
+
+    def __init__(self, name: str,
+                 task_condition: str,
+                 tests: dict,
+                 lesson_id: uuid.UUID):
+        """
+        :param name: Название задания
+        :param task_condition: Условие задания
+        :param tests: JSON с тестами
+        :param lesson_id: UUID урока, к которому привязано задание
+        """
+        self.name = name
+        self.task_condition = task_condition
+        self.tests = tests
+        self.lesson_id = lesson_id
 
 
 class User(Base):
@@ -78,6 +137,22 @@ class User(Base):
                                backref="courses")
     solves = orm.relationship("Solve", back_populates="user")
 
+    def __init__(self, name: str, login: str, email: str):
+        """
+        :param name: Имя пользователя
+        :param login: Логин пользователя
+        :param email: Почта пользователя
+        """
+        self.name = name
+        self.login = login
+        self.email = email
+
+    def generate_hash_password(self, password: str):
+        self.password = generate_password_hash(password)
+
+    def check_password(self, password: str):
+        return check_password_hash(self.password, password)
+
 
 class Attendance(Base):
     __tablename__ = "users_to_courses"
@@ -85,7 +160,15 @@ class Attendance(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     course_id = Column(UUID(as_uuid=True), ForeignKey("courses.id"))
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    date = Column(DATE)
+    date = Column(DATE, default=datetime.datetime.now)
+
+    def __init__(self, course_id: uuid.UUID, user_id: uuid.UUID):
+        """
+        :param course_id: UUID курса, к которому прикрепляется пользователь
+        :param user_id: UUID пользователя
+        """
+        self.course_id = course_id
+        self.user_id = user_id
 
 
 class Solve(Base):
@@ -99,3 +182,18 @@ class Solve(Base):
 
     task = orm.relationship("Task")
     user = orm.relationship("User")
+
+    def __init__(self, task_id: uuid.UUID,
+                 user_id: uuid.UUID,
+                 code: str,
+                 verdict: str = "Check"):
+        """
+        :param task_id: UUID задания
+        :param user_id: UUID пользователя
+        :param code: код, отправленный на проверку
+        :param verdict: результат выполнения кода
+        """
+        self.task_id = task_id
+        self.user_id = user_id
+        self.code = code
+        self.verdict = verdict
