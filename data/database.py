@@ -12,7 +12,7 @@ def global_init(db_password):
     if __factory:
         return
 
-    conn_str = f'postgresql://postgres:{db_password}@localhost/PyTry'
+    conn_str = f'postgresql://postgres:{db_password}@localhost/PyTryDB'
     print(f"Подключение к базе данных по адресу {conn_str}")
     engine = sa.create_engine(conn_str, echo=False)
     __factory = orm.sessionmaker(bind=engine)

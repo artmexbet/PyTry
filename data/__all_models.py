@@ -1,5 +1,6 @@
 from sqlalchemy import Column, orm, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, TEXT, DATE, JSON
+from sqlalchemy.dialects.postgresql import (UUID, TEXT, DATE,
+                                            JSON, BOOLEAN, INTERVAL)
 from werkzeug.security import generate_password_hash, check_password_hash
 from .database import Base
 import datetime
@@ -13,7 +14,9 @@ class Language(Base):
     name = Column(TEXT, nullable=False)
     path = Column(TEXT, nullable=False)
 
-    courses = orm.relationship("Course", back_populates="language")
+    courses = orm.relationship("Course",
+                               back_populates="language",
+                               cascade="all, delete")
 
     def __init__(self, name: str, path: str):
         """
@@ -22,6 +25,12 @@ class Language(Base):
         """
         self.name = name
         self.path = path
+
+    def to_json(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name
+        }
 
 
 class Course(Base):
@@ -32,27 +41,47 @@ class Course(Base):
     description = Column(TEXT, nullable=False)
     pic = Column(TEXT)  # Путь до картинки
     language_id = Column(UUID(as_uuid=True), ForeignKey("languages.id"))
+    is_public = Column(BOOLEAN, default=True, nullable=False)
 
     language = orm.relationship("Language")
-    lessons = orm.relationship("Lesson", back_populates="course")
+    lessons = orm.relationship("Lesson",
+                               back_populates="course",
+                               cascade="all, delete")
     users = orm.relationship("User", secondary="users_to_courses",
                              backref="users")
 
     def __init__(self, name: str,
                  description: str,
                  pic: str,
-                 language_id: uuid.UUID):
+                 language_id: uuid.UUID,
+                 is_public=True):
         """
         :param name: Название курса
         :param description: Описание курса
         :param pic: Путь до картинки в папке static
         :param language_id: UUID языка программирования,
          на котором решается курс
+        :param is_public: True если курс публичный
         """
         self.name = name
         self.description = description
         self.pic = pic
         self.language_id = language_id
+        self.is_public = is_public
+
+    def __repr__(self):
+        return f"<Course '{self.name}'>"
+
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "pic": self.pic,
+            "id": self.id,
+            "language": self.language.to_json(),
+            "is_public": self.is_public,
+            "lessons": [lesson.to_json() for lesson in self.lessons]
+        }
 
 
 class Lesson(Base):
@@ -64,8 +93,12 @@ class Lesson(Base):
     description = Column(TEXT)
 
     course = orm.relationship("Course")
-    links = orm.relationship("Link", back_populates="lesson")
-    tasks = orm.relationship("Task", back_populates="lesson")
+    links = orm.relationship("Link",
+                             back_populates="lesson",
+                             cascade="all, delete")
+    tasks = orm.relationship("Task",
+                             back_populates="lesson",
+                             cascade="all, delete")
 
     def __init__(self, name: str, description: str, course_id: uuid.UUID):
         """
@@ -77,23 +110,41 @@ class Lesson(Base):
         self.description = description
         self.course_id = course_id
 
+    def to_json(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "tasks": [task.to_json() for task in self.tasks],
+            "links": [link.to_json() for link in self.links]
+        }
+
 
 class Link(Base):
     __tablename__ = "useful_links"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lesson_id = Column(UUID(as_uuid=True), ForeignKey("lessons.id"))
+    title = Column(TEXT)
     link = Column(TEXT)
 
     lesson = orm.relationship("Lesson")
 
-    def __init__(self, link: str, lesson_id: uuid.UUID):
+    def __init__(self, title: str, link: str, lesson_id: uuid.UUID):
         """
+        :param title: название ссылки
         :param link: ссылка на ресурс
         :param lesson_id: UUID урока, к которому привязана ссылка
         """
         self.link = link
         self.lesson_id = lesson_id
+        self.title = title
+
+    def to_json(self) -> dict:
+        return {
+            "link": self.link,
+            "title": self.title,
+        }
 
 
 class Task(Base):
@@ -106,7 +157,9 @@ class Task(Base):
     tests = Column(JSON)
 
     lesson = orm.relationship("Lesson")
-    solves = orm.relationship("Solve", back_populates="task")
+    solves = orm.relationship("Solve",
+                              back_populates="task",
+                              cascade="all, delete")
 
     def __init__(self, name: str,
                  task_condition: str,
@@ -123,35 +176,59 @@ class Task(Base):
         self.tests = tests
         self.lesson_id = lesson_id
 
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "task_condition": self.task_condition
+        }
+
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(TEXT, nullable=False)
-    login = Column(TEXT, nullable=False)
+    login = Column(TEXT, nullable=False, unique=True)
     email = Column(TEXT, nullable=False)
     password = Column(TEXT, nullable=False)
+    is_admin = Column(BOOLEAN, default=False)
 
     courses = orm.relationship("Course", secondary="users_to_courses",
                                backref="courses")
-    solves = orm.relationship("Solve", back_populates="user")
+    solves = orm.relationship("Solve",
+                              back_populates="user",
+                              cascade="all, delete")
 
-    def __init__(self, name: str, login: str, email: str):
+    def __init__(self, name: str, login: str, email: str, is_admin: bool):
         """
         :param name: Имя пользователя
         :param login: Логин пользователя
         :param email: Почта пользователя
+        :param is_admin: True если пользователь - админ
         """
         self.name = name
         self.login = login
         self.email = email
+        self.is_admin = is_admin
 
     def generate_hash_password(self, password: str):
         self.password = generate_password_hash(password)
 
     def check_password(self, password: str):
         return check_password_hash(self.password, password)
+
+    def to_json(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "login": self.login,
+            "email": self.email,
+            "is_admin": self.is_admin,
+            "courses": [course.to_json() for course in self.courses]
+        }
+
+    def get_solves(self) -> dict:
+        return {"solves": [solve.to_json() for solve in self.solves]}
 
 
 class Attendance(Base):
@@ -179,6 +256,8 @@ class Solve(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     verdict = Column(TEXT)
     code = Column(TEXT)
+    time = Column(INTERVAL)
+    date = Column(DATE, default=datetime.datetime.now)
 
     task = orm.relationship("Task")
     user = orm.relationship("User")
@@ -186,14 +265,26 @@ class Solve(Base):
     def __init__(self, task_id: uuid.UUID,
                  user_id: uuid.UUID,
                  code: str,
+                 time: datetime.time = datetime.time.min,
                  verdict: str = "Check"):
         """
         :param task_id: UUID задания
         :param user_id: UUID пользователя
         :param code: код, отправленный на проверку
+        :param time: время выполнения кода
         :param verdict: результат выполнения кода
         """
         self.task_id = task_id
         self.user_id = user_id
         self.code = code
         self.verdict = verdict
+        self.time = time
+
+    def to_json(self) -> dict:
+        return {
+            "id": self.id,
+            "task": self.task.to_json(),
+            "user": self.user.to_json(),
+            "time": self.time.microsecond,
+            "date": self.date
+        }
