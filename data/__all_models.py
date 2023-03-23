@@ -1,6 +1,7 @@
 from sqlalchemy import Column, orm, ForeignKey
 from sqlalchemy.dialects.postgresql import (UUID, TEXT, DATE,
-                                            JSON, BOOLEAN, INTERVAL)
+                                            JSON, BOOLEAN, INTERVAL,
+                                            BIGINT)
 from werkzeug.security import generate_password_hash, check_password_hash
 from .database import Base
 import datetime
@@ -155,6 +156,7 @@ class Task(Base):
     name = Column(TEXT)
     task_condition = Column(TEXT)
     tests = Column(JSON)
+    time_limit = Column(BIGINT)
 
     lesson = orm.relationship("Lesson")
     solves = orm.relationship("Solve",
@@ -164,7 +166,8 @@ class Task(Base):
     def __init__(self, name: str,
                  task_condition: str,
                  tests: dict,
-                 lesson_id: uuid.UUID):
+                 lesson_id: uuid.UUID,
+                 time_limit: int = 1):
         """
         :param name: Название задания
         :param task_condition: Условие задания
@@ -175,11 +178,14 @@ class Task(Base):
         self.task_condition = task_condition
         self.tests = tests
         self.lesson_id = lesson_id
+        self.time_limit = time_limit
 
     def to_json(self) -> dict:
         return {
             "name": self.name,
-            "task_condition": self.task_condition
+            "task_condition": self.task_condition,
+            "time_limit": self.time_limit,
+            "tests": self.tests["tests"][:2]
         }
 
 

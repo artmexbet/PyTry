@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, Response
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, get_jwt
 from flask_jwt_extended import (create_access_token, create_refresh_token,
@@ -141,10 +141,10 @@ def attend(course_id):
     course = sess.get(Course, course_id)
 
     if not course:
-        return {"status": "Forbidden"}, 403
+        return {"status": "Not found"}, 404
 
     if not course.is_public and not user.is_admin:
-        return {"status": "No access"}, 403
+        return {"status": "Forbidden"}, 403
 
     if course in user.courses:
         return {"status": "Already on course"}
@@ -211,7 +211,9 @@ def get_courses_of_user(user_id):
         return {"courses": [course.to_json() for course in user.courses]}
 
     if user.is_admin:
-        return {"courses": [course.to_json() for course in requested_user.courses]}
+        return {
+            "courses": [course.to_json() for course in requested_user.courses]
+        }
 
     return {"status": "Forbidden"}, 403
 
@@ -237,13 +239,16 @@ def post_task(course_id, lesson_id, task_id):
     sess.commit()
 
     def check_task():
-        checker = TaskChecker(json["code"], 1, "python", task.tests, solve.id)
+        checker = TaskChecker(json["code"], task.time_limit,
+                              task.lesson.course.language.path,
+                              task.tests, solve.id)
         thread = checker.run(sess)
+        yield '{"verdict": '
         while thread.is_alive():
             yield ""
-        yield checker.verdict
+        yield f'"{checker.verdict}", "time": {checker.time_interval}' + "}"
 
-    return Response(check_task(), mimetype="text/plain")
+    return Response(check_task(), mimetype="text/json")
 
 
 @app.route("/refresh")
@@ -256,4 +261,4 @@ def refresh():
 
 if __name__ == "__main__":
     global_init(db_password, db_username, db_address, db_name)
-    app.run(debug=True)
+    app.run(threaded=True)
