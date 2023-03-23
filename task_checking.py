@@ -19,6 +19,10 @@ class TaskChecker:
         :param tests: {"tests": [{"input": ..., "output": ...}, ...]}
         :param solve_uuid: ID решения для создания потока
         """
+        test_path = os.path.join(os.getcwd(), "tests")
+        if not os.path.exists(test_path):
+            os.mkdir(test_path)
+
         self.path_to_file = os.path.join(os.getcwd(),
                                          "tests",
                                          f"{solve_uuid}.py")
