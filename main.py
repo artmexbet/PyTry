@@ -30,10 +30,10 @@ def take_user(header_data, payload_data) -> User:
     return user
 
 
-def check_task_request(course_id, lesson_id, task_id):
+def check_task_request(course_id, lesson_id, task_id, user):
     sess = create_session()
 
-    user = get_current_user()
+    # user = get_current_user()
     course = sess.get(Course, course_id)
     lesson = sess.get(Lesson, lesson_id)
     task = sess.get(Task, task_id)
@@ -191,7 +191,8 @@ def get_lesson(course_id, lesson_id):
 @app.route("/courses/<course_id>/<lesson_id>/<task_id>")
 @jwt_required()
 def get_task(course_id, lesson_id, task_id):
-    temp = check_task_request(course_id, lesson_id, task_id)
+    user = get_current_user()
+    temp = check_task_request(course_id, lesson_id, task_id, user)
     if isinstance(temp, tuple):
         return temp
     return temp.to_json()
@@ -223,7 +224,8 @@ def get_courses_of_user(user_id):
 def post_task(course_id, lesson_id, task_id):
     sess = create_session()
     sess.expire_on_commit = False
-    task = check_task_request(course_id, lesson_id, task_id)
+    user = get_current_user()
+    task = check_task_request(course_id, lesson_id, task_id, user)
 
     if isinstance(task, tuple):
         return task
@@ -233,7 +235,6 @@ def post_task(course_id, lesson_id, task_id):
     if "code" not in json:
         return {"status": "Not all argument"}, 500
 
-    user = get_current_user()
     solve = Solve(task.id, user.id, json["code"])
     sess.add(solve)
     sess.commit()
@@ -261,4 +262,4 @@ def refresh():
 
 if __name__ == "__main__":
     global_init(db_password, db_username, db_address, db_name)
-    app.run(threaded=True)
+    app.run(threaded=True, debug=True)

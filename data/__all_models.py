@@ -1,7 +1,6 @@
 from sqlalchemy import Column, orm, ForeignKey
 from sqlalchemy.dialects.postgresql import (UUID, TEXT, DATE,
-                                            JSON, BOOLEAN, INTERVAL,
-                                            BIGINT)
+                                            JSON, BOOLEAN, BIGINT)
 from werkzeug.security import generate_password_hash, check_password_hash
 from .database import Base
 import datetime
@@ -262,7 +261,7 @@ class Solve(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     verdict = Column(TEXT)
     code = Column(TEXT)
-    time = Column(INTERVAL)
+    time = Column(BIGINT)
     date = Column(DATE, default=datetime.datetime.now)
 
     task = orm.relationship("Task")
@@ -271,7 +270,7 @@ class Solve(Base):
     def __init__(self, task_id: uuid.UUID,
                  user_id: uuid.UUID,
                  code: str,
-                 time: datetime.time = datetime.time.min,
+                 time: int = 0,
                  verdict: str = "Check"):
         """
         :param task_id: UUID задания
@@ -291,6 +290,6 @@ class Solve(Base):
             "id": self.id,
             "task": self.task.to_json(),
             "user": self.user.to_json(),
-            "time": self.time.microsecond,
+            "time": self.time,
             "date": self.date
         }

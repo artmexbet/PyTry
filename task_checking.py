@@ -80,7 +80,9 @@ class TaskChecker:
                                                          self.timeout)
                 except TimeoutExpired as te:
                     is_timeout_expired = True
-                self.time_interval = test_start_time - time.time()
+                self.time_interval = round(
+                    (time.time() - test_start_time) * 100
+                )
             out.close()
             err.close()
 
@@ -100,6 +102,7 @@ class TaskChecker:
 
             if error:
                 self.verdict = TaskChecker.format_errors(error)
+                self.verdict = self.verdict.replace(str(self.id), "solution")
                 is_ok = False
                 break
 
