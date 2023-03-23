@@ -1,9 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, get_jwt
 from flask_jwt_extended import (create_access_token, create_refresh_token,
                                 jwt_required, get_jwt_identity,
                                 get_current_user)
+from task_checking import TaskChecker
 from data.__all_models import *
 
 import logging
@@ -125,10 +126,10 @@ def get_courses():
     sess = create_session()
     courses = sess.query(Course).all()
     if get_jwt() and get_current_user().is_admin:
-        return jsonify([course.to_json() for course in courses])
+        return {"courses": [course.to_json() for course in courses]}
     else:
-        return jsonify([course.to_json()
-                        for course in courses if course.is_public])
+        return {"courses": [course.to_json()
+                            for course in courses if course.is_public]}
 
 
 @app.route("/courses/attend/<course_id>")
@@ -140,7 +141,7 @@ def attend(course_id):
     course = sess.get(Course, course_id)
 
     if not course:
-        return {"status": "Course not found"}, 404
+        return {"status": "Forbidden"}, 403
 
     if not course.is_public and not user.is_admin:
         return {"status": "No access"}, 403
@@ -167,7 +168,7 @@ def get_course(course_id):
     if course not in user.courses and not user.is_admin:
         return {"status": "User not at course"}, 403
 
-    return jsonify([lesson.to_json() for lesson in course.lessons])
+    return course.to_json()
 
 
 @app.route("/courses/<course_id>/<lesson_id>")
@@ -190,7 +191,10 @@ def get_lesson(course_id, lesson_id):
 @app.route("/courses/<course_id>/<lesson_id>/<task_id>")
 @jwt_required()
 def get_task(course_id, lesson_id, task_id):
-    return check_task_request(course_id, lesson_id, task_id).to_json()
+    temp = check_task_request(course_id, lesson_id, task_id)
+    if isinstance(temp, tuple):
+        return temp
+    return temp.to_json()
 
 
 @app.route("/user/courses/<user_id>")
@@ -204,10 +208,10 @@ def get_courses_of_user(user_id):
         return {"status": "Not found"}, 404
 
     if user == requested_user:
-        return [course.to_json() for course in user.courses]
+        return {"courses": [course.to_json() for course in user.courses]}
 
     if user.is_admin:
-        return [course.to_json() for course in requested_user.courses]
+        return {"courses": [course.to_json() for course in requested_user.courses]}
 
     return {"status": "Forbidden"}, 403
 
@@ -215,18 +219,35 @@ def get_courses_of_user(user_id):
 @app.route("/courses/<course_id>/<lesson_id>/<task_id>", methods=["POST"])
 @jwt_required()
 def post_task(course_id, lesson_id, task_id):
+    sess = create_session()
+    sess.expire_on_commit = False
     task = check_task_request(course_id, lesson_id, task_id)
 
     if isinstance(task, tuple):
         return task
 
-    # TODO: Написать здесь проверку кода
+    json = request.json
 
-    # return task.to_json()
+    if "code" not in json:
+        return {"status": "Not all argument"}, 500
+
+    user = get_current_user()
+    solve = Solve(task.id, user.id, json["code"])
+    sess.add(solve)
+    sess.commit()
+
+    def check_task():
+        checker = TaskChecker(json["code"], 1, "python", task.tests, solve.id)
+        thread = checker.run(sess)
+        while thread.is_alive():
+            yield ""
+        yield checker.verdict
+
+    return Response(check_task(), mimetype="text/plain")
 
 
 @app.route("/refresh")
-@jwt_required(fresh=True)
+@jwt_required(refresh=True)
 def refresh():
     current_user = get_jwt_identity()
     access_token = create_access_token(identity=current_user)
@@ -234,5 +255,5 @@ def refresh():
 
 
 if __name__ == "__main__":
-    global_init(db_password)
+    global_init(db_password, db_username, db_address, db_name)
     app.run(debug=True)

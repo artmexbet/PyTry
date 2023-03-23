@@ -199,7 +199,7 @@ class User(Base):
                               back_populates="user",
                               cascade="all, delete")
 
-    def __init__(self, name: str, login: str, email: str, is_admin: bool):
+    def __init__(self, name: str, login: str, email: str, is_admin: bool=False):
         """
         :param name: Имя пользователя
         :param login: Логин пользователя

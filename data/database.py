@@ -7,12 +7,13 @@ Base = dec.declarative_base()
 __factory = None
 
 
-def global_init(db_password):
+def global_init(db_password, db_username, db_address, db_name):
     global __factory
     if __factory:
         return
 
-    conn_str = f'postgresql://postgres:{db_password}@localhost/PyTryDB'
+    conn_str = f'postgresql://{db_username}:{db_password}@' \
+               f'{db_address}/{db_name}'
     print(f"Подключение к базе данных по адресу {conn_str}")
     engine = sa.create_engine(conn_str, echo=False)
     __factory = orm.sessionmaker(bind=engine)
