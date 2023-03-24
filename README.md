@@ -146,3 +146,92 @@
 **response:**
 
 * jwt_access
+
+### /users/<user_id>/password
+
+**UPDATE**
+
+**JWT REQUIRED**
+
+**body:**
+
+* new_password - обязательное поле
+* old_password - необязательно для админа, если он меняет чужой пароль
+
+**response:**
+
+* status
+
+### /courses/<course_id>
+
+**DELETE**
+
+**JWT REQUIRED**
+
+**response:**
+
+* status
+
+### /courses/<course_id>/<lesson_id>
+
+**DELETE**
+
+**JWT REQUIRED**
+
+**response:**
+
+* status
+
+### /courses/<course_id>/<lesson_id>/<task_id>
+
+**DELETE**
+
+**JWT REQUIRED**
+
+**response:**
+
+* status
+
+### /courses/<course_id>/<lesson_id>
+
+**DELETE**
+
+**JWT REQUIRED**
+
+**response:**
+
+* status
+
+### /courses/<course_id>/<lesson_id>/<link_id>
+
+**DELETE**
+
+**JWT REQUIRED**
+
+**response:**
+
+* status
+
+### /users/<user_id>
+
+**DELETE**
+
+**JWT REQUIRED**
+
+Пользователя может удалять только админ.
+
+**response:**
+
+* status
+
+### /languages/<language_id>
+
+**DELETE**
+
+**JWT REQUIRED**
+
+Язык может удалять только админ.
+
+**response:**
+
+* status

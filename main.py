@@ -1,4 +1,4 @@
-from flask import Flask, request, Response
+from flask import Flask, request, Response, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, get_jwt
 from flask_jwt_extended import (create_access_token, create_refresh_token,
@@ -6,6 +6,7 @@ from flask_jwt_extended import (create_access_token, create_refresh_token,
                                 get_current_user)
 from task_checking import TaskChecker
 from data.__all_models import *
+from time import sleep
 
 import logging
 
@@ -54,7 +55,10 @@ def check_task_request(course_id, lesson_id, task_id, user):
 def reg():
     json = request.json
     if any([i not in json for i in ["login", "password", "name", "email"]]):
-        return {"status": "Not all arguments"}, 500
+        return {
+            "status":
+                f"You have to send {', '.join(['login', 'password', 'name', 'email'])}"
+        }, 400
 
     sess = create_session()
 
@@ -88,7 +92,9 @@ def login():
     json = request.json
 
     if not ("password" in json and ("email" in json or "login" in json)):
-        return {"status": "Not all arguments"}, 500
+        return {
+            "status": "You have to send 'password' and 'email' or 'login'"
+        }, 400
 
     sess = create_session()
 
@@ -233,23 +239,213 @@ def post_task(course_id, lesson_id, task_id):
     json = request.json
 
     if "code" not in json:
-        return {"status": "Not all argument"}, 500
+        return {"status": "You have to send 'code'"}, 400
 
     solve = Solve(task.id, user.id, json["code"])
     sess.add(solve)
     sess.commit()
 
-    def check_task():
-        checker = TaskChecker(json["code"], task.time_limit,
-                              task.lesson.course.language.path,
-                              task.tests, solve.id)
-        thread = checker.run(sess)
-        yield '{"verdict": '
-        while thread.is_alive():
-            yield ""
-        yield f'"{checker.verdict}", "time": {checker.time_interval}' + "}"
+    language = task.lesson.course.language
 
-    return Response(check_task(), mimetype="text/json")
+    checker = TaskChecker(json["code"], task.time_limit,
+                          language.path,
+                          task.tests, language.options, solve.id)
+    thread = checker.run(sess)
+
+    while thread.is_alive():
+        sleep(0.5)
+
+    return jsonify({"verdict": checker.verdict,
+                    "time": checker.time_interval})
+
+
+@app.route("/users/<user_id>/password", methods=["UPDATE"])
+@jwt_required()
+def update_password(user_id):
+    sess = create_session()
+    user = get_current_user()
+    user_ = sess.get(User, user_id)
+
+    if not user_:
+        return {"status": "Not found"}, 404
+
+    json = request.json
+
+    if "new_password" not in json:
+        return {"status": "You have to send 'new_password'"}, 400
+
+    if user.is_admin and user != user_:
+        user_.generate_hash_password(json["new_password"])
+        sess.commit()
+        return {"status": "OK"}
+
+    if user == user_:
+        if "old_password" not in json:
+            return {"status": "You have to send 'old_password'"}
+
+        if not user.check_password(json["old_password"]):
+            return {"status": "Old passwords doesn't match"}, 406
+
+        user.generate_hash_password(json["new_password"])
+        sess.commit()
+        return {"status": "success"}
+    return {"status": "Forbidden"}, 403
+
+
+@app.route("/courses/<course_id>", methods=["DELETE"])
+@jwt_required()
+def delete_course(course_id):
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    sess = create_session()
+    course = sess.get(Course, course_id)
+
+    if not course:
+        return {"status": "Not found"}, 404
+
+    sess.delete(course)
+    sess.commit()
+    return {"status": "success"}
+
+
+@app.route("/courses/<course_id>/<lesson_id>", methods=["DELETE"])
+@jwt_required()
+def delete_lesson(course_id, lesson_id):
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    sess = create_session()
+    course = sess.get(Course, course_id)
+
+    if not course:
+        return {"status": "Not found"}, 404
+
+    lesson = sess.get(Lesson, lesson_id)
+
+    if not lesson:
+        return {"status": "Not found"}, 404
+
+    if lesson not in course.lessons:
+        return {"status": "Lesson is not bounded to this course"}, 400
+
+    sess.delete(lesson)
+    sess.commit()
+    return {"status": "success"}
+
+
+@app.route("/courses/<course_id>/<lesson_id>/<task_id>", methods=["DELETE"])
+@jwt_required()
+def delete_task(course_id, lesson_id, task_id):
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    sess = create_session()
+    course = sess.get(Course, course_id)
+
+    if not course:
+        return {"status": "Not found"}, 404
+
+    lesson = sess.get(Lesson, lesson_id)
+
+    if not lesson:
+        return {"status": "Not found"}, 404
+
+    if lesson not in course.lessons:
+        return {"status": "Lesson is not bounded to this course"}, 400
+
+    task = sess.get(Task, task_id)
+
+    if not task:
+        return {"status": "Not found"}, 404
+
+    if task not in lesson.tasks:
+        return {"status": "Task is not bounded to this lesson"}, 400
+
+    sess.delete(task)
+    sess.commit()
+    return {"status": "success"}
+
+
+@app.route("/courses/<course_id>/<lesson_id>/<link_id>",
+           methods=["DELETE"])
+@jwt_required()
+def delete_link(course_id, lesson_id, link_id):
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    sess = create_session()
+    course = sess.get(Course, course_id)
+
+    if not course:
+        return {"status": "Not found"}, 404
+
+    lesson = sess.get(Lesson, lesson_id)
+
+    if not lesson:
+        return {"status": "Not found"}, 404
+
+    if lesson not in course.lessons:
+        return {"status": "Lesson is not bounded to this course"}, 400
+
+    link = sess.get(Link, link_id)
+
+    if not link:
+        return {"status": "Not found"}, 404
+
+    if link not in lesson.links:
+        return {"status": "Link is not bounded to this lesson"}, 400
+
+    sess.delete(link)
+    sess.commit()
+    return {"status": "success"}
+
+
+@app.route("/users/<user_id>", methods=["DELETE"])
+@jwt_required()
+def delete_user(user_id):
+    user = get_current_user()
+
+    sess = create_session()
+    user_ = sess.get(User, user_id)
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    if not user_:
+        return {"status": "Not found"}, 404
+
+    sess.delete(user_)
+    sess.commit()
+    return {"status": "success"}
+
+
+@app.route("/languages/<language_id>", methods=["DELETE"])
+@jwt_required()
+def delete_languages(language_id):
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    sess = create_session()
+
+    language = sess.get(Language, language_id)
+
+    if not language:
+        return {"status": "Not found"}, 404
+
+    sess.delete(language)
+    sess.commit()
+    return {"status": "success"}
 
 
 @app.route("/refresh")

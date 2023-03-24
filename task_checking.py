@@ -1,6 +1,6 @@
 import time
 import uuid
-from subprocess import Popen, PIPE, TimeoutExpired
+from subprocess import Popen, PIPE, TimeoutExpired, run
 from threading import Thread
 from sqlalchemy.orm import Session
 import os
@@ -14,12 +14,14 @@ class TaskChecker:
                  timeout: int,
                  cmd: str,
                  tests: dict,
+                 options: str,
                  solve_uuid: uuid.UUID = ""):
         """
         :param code: код
         :param timeout: время на выполнение
         :param cmd: путь до компилятора
         :param tests: {"tests": [{"input": ..., "output": ...}, ...]}
+        :param options: опции скрипта запуска
         :param solve_uuid: ID решения для создания потока
         """
         test_path = os.path.join(os.getcwd(), "tests")
@@ -39,6 +41,7 @@ class TaskChecker:
         self.id = solve_uuid
         self.verdict = "Check"
         self.time_interval = None
+        self.options = options
 
     def __call__(self, session: Session, *args, **kwargs):
         solve = session.get(Solve, self.id)
@@ -68,7 +71,7 @@ class TaskChecker:
             is_timeout_expired = False
             # Открытие потока выполнения программы
             with Popen(
-                    f'{self.path} "{self.path_to_file}"',
+                    f'{self.path} {self.options} "{self.path_to_file}"',
                     stdin=PIPE,
                     stdout=out,
                     stderr=err,

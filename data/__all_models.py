@@ -13,18 +13,25 @@ class Language(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(TEXT, nullable=False)
     path = Column(TEXT, nullable=False)
+    options = Column(TEXT)
+    blocked_modules = Column(JSON)
 
     courses = orm.relationship("Course",
                                back_populates="language",
                                cascade="all, delete")
 
-    def __init__(self, name: str, path: str):
+    def __init__(self,
+                 name: str,
+                 path: str,
+                 options: str = ""):
         """
         :param name: Название языка программирования
         :param path: путь до сервера, на котором выполняется тестирование
+        :param options: опции скрипта запуска
         """
         self.name = name
         self.path = path
+        self.options = options
 
     def to_json(self) -> dict:
         return {
