@@ -14,7 +14,6 @@ class Language(Base):
     name = Column(TEXT, nullable=False)
     path = Column(TEXT, nullable=False)
     options = Column(TEXT)
-    blocked_modules = Column(JSON)
 
     courses = orm.relationship("Course",
                                back_populates="language",

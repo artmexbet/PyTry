@@ -26,7 +26,7 @@ jwt_manager = JWTManager(app)
 @jwt_manager.user_lookup_loader
 def take_user(header_data, payload_data) -> User:
     # print(header_data, payload_data)
-    sess = create_session()
+    # sess = create_session()
     user = sess.get(User, payload_data["sub"])
     return user
 
@@ -458,4 +458,5 @@ def refresh():
 
 if __name__ == "__main__":
     global_init(db_password, db_username, db_address, db_name)
+    sess = create_session()
     app.run(threaded=True, debug=True)
