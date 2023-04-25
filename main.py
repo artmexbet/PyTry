@@ -459,4 +459,4 @@ def refresh():
 if __name__ == "__main__":
     global_init(db_password, db_username, db_address, db_name)
     sess = create_session()
-    app.run(threaded=True, debug=True)
+    app.run(threaded=True, debug=True, host="0.0.0.0", port=5000)
