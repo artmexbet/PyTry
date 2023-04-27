@@ -249,7 +249,7 @@ docker-compose up -d
 
 * status
 
-### /language
+### /languages
 
 **POST**
 
@@ -266,7 +266,7 @@ docker-compose up -d
 * status
 * language - если _status = success_
 
-### /course
+### /courses
 
 **POST**
 
@@ -285,7 +285,7 @@ docker-compose up -d
 * status
 * course - если _status = success_
 
-### /lesson
+### /lessons
 
 **POST**
 
