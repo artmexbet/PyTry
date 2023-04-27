@@ -457,7 +457,7 @@ def refresh():
     return {'jwt_access': access_token}
 
 
-@app.route("/add/language", methods=["POST"])
+@app.route("/language", methods=["POST"])
 @jwt_required()
 def add_language():
     user = get_current_user()
@@ -481,7 +481,7 @@ def add_language():
     return {"status": "success", "language": language.to_json()}
 
 
-@app.route("/add/courses", methods=["POST"])
+@app.route("/courses", methods=["POST"])
 @jwt_required()
 def add_course():
     user = get_current_user()
@@ -514,7 +514,7 @@ def add_course():
     return {"status": "success", "course": course.to_json()}
 
 
-@app.route("/add/lesson", methods=["POST"])
+@app.route("/lesson", methods=["POST"])
 @jwt_required()
 def add_lesson():
     user = get_current_user()
