@@ -7,6 +7,7 @@ from flask_jwt_extended import (create_access_token, create_refresh_token,
 from task_checking import TaskChecker
 from data.__all_models import *
 from time import sleep
+from uuid import UUID
 
 import logging
 
@@ -454,6 +455,94 @@ def refresh():
     current_user = get_jwt_identity()
     access_token = create_access_token(identity=current_user)
     return {'jwt_access': access_token}
+
+
+@app.route("/add/language", methods=["POST"])
+@jwt_required()
+def add_language():
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    form = request.form
+
+    if any([i not in form for i in ["name", "path", "options"]]):
+        return {"status": "Not all arguments"}, 400
+
+    name = form["name"]
+    path = form["path"]
+    options = form["options"]
+
+    sess = create_session()
+    language = Language(name, path, options)
+    sess.add(language)
+    sess.commit()
+    return {"status": "success", "language": language.to_json()}
+
+
+@app.route("/add/courses", methods=["POST"])
+@jwt_required()
+def add_course():
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    form = request.form
+
+    if any([i not in form for i in ["name", "description", "pic", "language_id", "is_public"]]):
+        return {"status": "Not all arguments"}, 400
+
+    name = form["name"]
+    description = form["description"]
+    pic = form["pic"]
+    language_id = form["language_id"]
+    is_public = bool(form["is_public"])
+
+    sess = create_session()
+
+    language = sess.get(Language, language_id)
+    if not language:
+        return {"status": "Language not found"}, 404
+
+    course = Course(name, description, pic, UUID(language_id), is_public)
+
+    sess.add(course)
+    sess.commit()
+
+    return {"status": "success", "course": course.to_json()}
+
+
+@app.route("/add/lesson", methods=["POST"])
+@jwt_required()
+def add_lesson():
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
+
+    form = request.form
+
+    if any([i not in form for i in ["name", "description", "course_id"]]):
+        return {"status": "Not all arguments"}, 400
+
+    name = form["name"]
+    description = form["description"]
+    course_id = form["course_id"]
+
+    sess = create_session()
+
+    course = sess.get(Course, course_id)
+    if not course:
+        return {"status": "Course not found"}, 404
+
+    lesson = Lesson(name, description, UUID(course_id))
+
+    sess.add(lesson)
+    sess.commit()
+
+    return {"status": "success", "lesson": lesson.to_json()}
 
 
 if __name__ == "__main__":

@@ -17,11 +17,10 @@
 docker build .
 docker-compose up -d
 ```
-После этого сервер будет поднят по выданному докером IP-адресу. Его можно посмотреть выполнив команду:
+После этого сервер будет поднят на localhost:5000
 
-`docker inspect <container_id>`, где container_id - идентификатор контейнера, который, в свою очередь,
-можно посмотреть, выполнив команду 
-`docker ps`
+Чтобы зарегистрировать нового админа в обход всех ссылок, нужно запустить файл add_user через консоль внутри докера
+Это можно сделать в Docker Desktop.
 
 ## Пути
 ### /reg
@@ -180,7 +179,7 @@ docker-compose up -d
 
 **DELETE**
 
-**JWT REQUIRED**
+**ADMIN JWT REQUIRED**
 
 **response:**
 
@@ -190,7 +189,7 @@ docker-compose up -d
 
 **DELETE**
 
-**JWT REQUIRED**
+**ADMIN JWT REQUIRED**
 
 **response:**
 
@@ -200,7 +199,7 @@ docker-compose up -d
 
 **DELETE**
 
-**JWT REQUIRED**
+**ADMIN JWT REQUIRED**
 
 **response:**
 
@@ -210,7 +209,7 @@ docker-compose up -d
 
 **DELETE**
 
-**JWT REQUIRED**
+**ADMIN JWT REQUIRED**
 
 **response:**
 
@@ -220,7 +219,7 @@ docker-compose up -d
 
 **DELETE**
 
-**JWT REQUIRED**
+**ADMIN JWT REQUIRED**
 
 **response:**
 
@@ -230,7 +229,7 @@ docker-compose up -d
 
 **DELETE**
 
-**JWT REQUIRED**
+**ADMIN JWT REQUIRED**
 
 Пользователя может удалять только админ.
 
@@ -242,10 +241,63 @@ docker-compose up -d
 
 **DELETE**
 
-**JWT REQUIRED**
+**ADMIN JWT REQUIRED**
 
 Язык может удалять только админ.
 
 **response:**
 
 * status
+
+### /add/language
+
+**POST**
+
+**ADMIN JWT REQUIRED**
+
+**body**
+
+* name: str
+* path: str
+* options: str
+
+**response**
+
+* status
+* language - если _status = success_
+
+### /add/course
+
+**POST**
+
+**ADMIN JWT REQUIRED**
+
+**body**
+
+* name: str
+* description: str
+* pic: str
+* language_id: str
+* is_public: bool
+
+**response**
+
+* status
+* course - если _status = success_
+
+### /add/lesson
+
+**POST**
+
+**ADMIN JWT REQUIRED**
+
+**body**
+
+* name: str
+* description: str
+* course_id: str
+
+**response**
+
+* status
+* lesson - если _status = success_
