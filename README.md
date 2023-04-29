@@ -296,6 +296,7 @@ docker-compose up -d
 * name: str
 * description: str
 * course_id: str
+* links: list[dict] ([{"title": "some title", "link": "some_link"}]) (optional)
 
 **response**
 
