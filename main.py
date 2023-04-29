@@ -465,7 +465,7 @@ def add_language():
     if not user.is_admin:
         return {"status": "Forbidden"}, 403
 
-    form = request.form
+    form = request.json
 
     if any([i not in form for i in ["name", "path", "options"]]):
         return {"status": "Not all arguments"}, 400
@@ -489,7 +489,7 @@ def add_course():
     if not user.is_admin:
         return {"status": "Forbidden"}, 403
 
-    form = request.form
+    form = request.json
 
     if any([i not in form for i in ["name", "description", "pic", "language_id", "is_public"]]):
         return {"status": "Not all arguments"}, 400
@@ -522,7 +522,7 @@ def add_lesson():
     if not user.is_admin:
         return {"status": "Forbidden"}, 403
 
-    form = request.form
+    form = request.json
 
     if any([i not in form for i in ["name", "description", "course_id"]]):
         return {"status": "Not all arguments"}, 400
@@ -530,6 +530,7 @@ def add_lesson():
     name = form["name"]
     description = form["description"]
     course_id = form["course_id"]
+    links = form.get("links", [])
 
     sess = create_session()
 
@@ -538,11 +539,26 @@ def add_lesson():
         return {"status": "Course not found"}, 404
 
     lesson = Lesson(name, description, UUID(course_id))
+    sess.commit()
 
     sess.add(lesson)
+
+    for link in links:
+        obj = Link(link["title"], link["link"], lesson.id)
+        sess.add(obj)
+
     sess.commit()
 
     return {"status": "success", "lesson": lesson.to_json()}
+
+
+@app.route("/courses", methods=["UPDATE"])
+@jwt_required()
+def update_courses():
+    user = get_current_user()
+
+    if not user.is_admin:
+        return {"status": "Forbidden"}, 403
 
 
 if __name__ == "__main__":
