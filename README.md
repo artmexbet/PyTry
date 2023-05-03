@@ -302,3 +302,13 @@ docker-compose up -d
 
 * status
 * lesson - если _status = success_
+
+### /auth
+
+**GET**
+
+**JWT REQUIRED**
+
+**response**
+
+* info: dict - словарь с инфой о пользователе 

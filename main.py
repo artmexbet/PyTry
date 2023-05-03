@@ -27,7 +27,7 @@ jwt_manager = JWTManager(app)
 @jwt_manager.user_lookup_loader
 def take_user(header_data, payload_data) -> User:
     # print(header_data, payload_data)
-    # sess = create_session()
+    sess = create_session()
     user = sess.get(User, payload_data["sub"])
     return user
 
@@ -539,29 +539,62 @@ def add_lesson():
         return {"status": "Course not found"}, 404
 
     lesson = Lesson(name, description, UUID(course_id))
-    sess.commit()
 
     sess.add(lesson)
+    sess.commit()
 
     for link in links:
         obj = Link(link["title"], link["link"], lesson.id)
-        sess.add(obj)
+        lesson.links.append(obj)
 
     sess.commit()
 
     return {"status": "success", "lesson": lesson.to_json()}
 
 
+@app.route("/auth")
+@jwt_required()
+def get_user_info():
+    user = get_current_user()
+
+    return {"info": user.to_json()}
+
+
 @app.route("/courses", methods=["UPDATE"])
 @jwt_required()
 def update_courses():
+    """
+    Нужно, чтобы пришёл хотя бы один изменённый параметр
+    """
+    allowed_parameters = ["name", "description", "pic", "language_id"]
+
     user = get_current_user()
 
     if not user.is_admin:
         return {"status": "Forbidden"}, 403
 
+    form = request.json
+
+    if "id" not in form:
+        return {"status": "Error: you should send id of course that you want to edit"}, 400
+
+    sess = create_session()
+
+    course = sess.get(Course, form.pop("id"))
+
+    if not course:
+        return {"status": "Course not found"}, 404
+
+    if not any([i in form for i in allowed_parameters]):
+        return {"status": f"Canceled: You should send some parameter from {allowed_parameters}"}, 400
+
+    for key, value in form.items():
+        course.__setattr__(key, value)
+
+    return {"status": "ok"}
+
 
 if __name__ == "__main__":
     global_init(db_password, db_username, db_address, db_name)
-    sess = create_session()
+    # sess = create_session()
     app.run(threaded=True, debug=True, host="0.0.0.0", port=5000)
