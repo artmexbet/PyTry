@@ -1,9 +1,9 @@
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response, jsonify, session
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, get_jwt
 from flask_jwt_extended import (create_access_token, create_refresh_token,
                                 jwt_required, get_jwt_identity,
-                                get_current_user)
+                                get_current_user, decode_token)
 from task_checking import TaskChecker
 from data.__all_models import *
 from time import sleep
@@ -21,6 +21,7 @@ logging.basicConfig(filename="runtime.log",
 app = Flask(__name__)
 CORS(app)
 app.config["JWT_SECRET_KEY"] = "SECRET_KEY"
+app.config["SECRET_KEY"] = "LONG_LONG_KEY"
 jwt_manager = JWTManager(app)
 
 
@@ -74,16 +75,15 @@ def reg():
 
     sess.add(user)
     sess.commit()
+
+    session["jwt_refresh"] = create_refresh_token(identity=user.id, additional_claims={"login": user.login})
+
     return {
         "status": "success",
         "jwt_access": create_access_token(identity=user.id,
                                           additional_claims={
                                               "login": user.login
                                           }),
-        "jwt_refresh": create_refresh_token(identity=user.id,
-                                            additional_claims={
-                                                "login": user.login
-                                            }),
         "user": user.to_json()
     }, 200
 
@@ -109,15 +109,11 @@ def login():
     if not user or not user.check_password(json["password"]):
         return {"status": "incorrect"}, 404
 
+    session["jwt_refresh"] = create_refresh_token(identity=user.id, additional_claims={"login": user.login})
+
     return {
         "status": "success",
         "jwt_access": create_access_token(
-            identity=user.id,
-            additional_claims={
-                "login": user.login
-            }
-        ),
-        "jwt_refresh": create_refresh_token(
             identity=user.id,
             additional_claims={
                 "login": user.login
@@ -450,9 +446,16 @@ def delete_languages(language_id):
 
 
 @app.route("/refresh")
-@jwt_required(refresh=True)
+# @jwt_required(refresh=True)
 def refresh():
-    current_user = get_jwt_identity()
+    refresh_jwt = session.get("jwt_refresh", None)
+
+    if refresh_jwt is None:
+        return {"status": "Not authorized"}, 403
+
+    info = decode_token(refresh_jwt)
+
+    current_user = info["sub"]
     access_token = create_access_token(identity=current_user)
     return {'jwt_access': access_token}
 
@@ -587,6 +590,11 @@ def update_courses():
 
     if not any([i in form for i in allowed_parameters]):
         return {"status": f"Canceled: You should send some parameter from {allowed_parameters}"}, 400
+
+    attributes = dir(course)
+    for key in form:
+        if key not in attributes:
+            return {"status": "Canceled: You sent parameter which is not contains in Course class"}, 400
 
     for key, value in form.items():
         course.__setattr__(key, value)
