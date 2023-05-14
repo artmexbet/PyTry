@@ -19,7 +19,8 @@ logging.basicConfig(filename="runtime.log",
                     level=logging.DEBUG)
 
 app = Flask(__name__)
-CORS(app)
+app.config["CORS_SUPPORTS_CREDENTIALS"] = True
+CORS(app, supports_credentials=True)
 app.config["JWT_SECRET_KEY"] = "SECRET_KEY"
 app.config["SECRET_KEY"] = "LONG_LONG_KEY"
 jwt_manager = JWTManager(app)
@@ -53,6 +54,15 @@ def check_task_request(course_id, lesson_id, task_id, user):
     return task
 
 
+def prepare_starting():
+    sess = create_session()
+
+    user_role = sess.query(Role).filter(Role.title == "user").first()
+    if not user_role:
+        sess.add(Role("user", ""))
+        sess.commit()
+
+
 @app.route("/reg", methods=["POST"])
 def reg():
     json = request.json
@@ -70,7 +80,8 @@ def reg():
 
     user = User(name=json["name"],
                 login=json["login"],
-                email=json["email"])
+                email=json["email"],
+                role_id=sess.query(Role).filter(Role.title == "user").first().id)
     user.generate_hash_password(json["password"])
 
     sess.add(user)
@@ -604,5 +615,6 @@ def update_courses():
 
 if __name__ == "__main__":
     global_init(db_password, db_username, db_address, db_name)
+    prepare_starting()
     # sess = create_session()
     app.run(threaded=True, debug=True, host="0.0.0.0", port=5000)

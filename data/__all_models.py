@@ -1,6 +1,6 @@
 from sqlalchemy import Column, orm, ForeignKey
 from sqlalchemy.dialects.postgresql import (UUID, TEXT, DATE,
-                                            JSON, BOOLEAN, BIGINT)
+                                            JSON, BOOLEAN, BIGINT, INTEGER)
 from werkzeug.security import generate_password_hash, check_password_hash
 from .database import Base
 import datetime
@@ -48,13 +48,16 @@ class Course(Base):
     pic = Column(TEXT)  # Путь до картинки
     language_id = Column(UUID(as_uuid=True), ForeignKey("languages.id"))
     is_public = Column(BOOLEAN, default=True, nullable=False)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
 
     language = orm.relationship("Language")
+    author = orm.relationship("User")
     lessons = orm.relationship("Lesson",
                                back_populates="course",
                                cascade="all, delete")
     users = orm.relationship("User", secondary="users_to_courses",
                              backref="users")
+    pictures = orm.relationship("Picture", back_populates="course")
 
     def __init__(self, name: str,
                  description: str,
@@ -90,6 +93,34 @@ class Course(Base):
         }
 
 
+class Picture(Base):
+    __tablename__ = "pictures"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    course_id = Column(UUID(as_uuid=True), ForeignKey("courses.id"))
+    path = Column(TEXT, nullable=False)
+    order = Column(INTEGER, nullable=False)
+
+    course = orm.relationship("Course")
+
+    def __init__(self, course_id: uuid.UUID, path: str, order: int):
+        """
+        :param course_id: ID курса
+        :param path: Путь до картинки
+        :param order: Порядок картинок (число >= 0)
+        """
+        self.course_id = course_id
+        self.path = path
+        self.order = order
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "path": self.path,
+            "order": self.order
+        }
+
+
 class Lesson(Base):
     __tablename__ = "lessons"
 
@@ -97,6 +128,7 @@ class Lesson(Base):
     course_id = Column(UUID(as_uuid=True), ForeignKey("courses.id"))
     name = Column(TEXT)
     description = Column(TEXT)
+    order = Column(INTEGER, nullable=False, default=0)
 
     course = orm.relationship("Course")
     links = orm.relationship("Link",
@@ -106,15 +138,17 @@ class Lesson(Base):
                              back_populates="lesson",
                              cascade="all, delete")
 
-    def __init__(self, name: str, description: str, course_id: uuid.UUID):
+    def __init__(self, name: str, description: str, course_id: uuid.UUID, order: int):
         """
         :param name: Название урока
         :param description: Описание урока
         :param course_id: UUID курса, к которому привязан урок
+        :param order: Порядок уроков в курсе
         """
         self.name = name
         self.description = description
         self.course_id = course_id
+        self.order = order
 
     def to_json(self) -> dict:
         return {
@@ -153,6 +187,31 @@ class Link(Base):
         }
 
 
+class TaskType(Base):
+    __tablename__ = "task_types"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(TEXT, nullable=False)
+    format = Column(TEXT, nullable=False)
+
+    tasks = orm.relationship("Task", back_populates="task_type")
+
+    def __init__(self, title: str, _format: str):
+        """
+        :param title: Название типа
+        :param _format: формат (смотри в Readme)
+        """
+        self.title = title
+        self.format = _format
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "format": self.format
+        }
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -162,7 +221,10 @@ class Task(Base):
     task_condition = Column(TEXT)
     tests = Column(JSON)
     time_limit = Column(BIGINT)
+    order = Column(INTEGER)
+    type_id = Column(UUID(as_uuid=True), ForeignKey("task_types.id"))
 
+    task_type = orm.relationship("TaskType")
     lesson = orm.relationship("Lesson")
     solves = orm.relationship("Solve",
                               back_populates="task",
@@ -172,18 +234,22 @@ class Task(Base):
                  task_condition: str,
                  tests: dict,
                  lesson_id: uuid.UUID,
+                 order: int,
                  time_limit: int = 1):
         """
         :param name: Название задания
         :param task_condition: Условие задания
         :param tests: JSON с тестами
+        :param order: Порядок отображения задач
         :param lesson_id: UUID урока, к которому привязано задание
+        :param time_limit: Лимит времени на выполнение кода
         """
         self.name = name
         self.task_condition = task_condition
         self.tests = tests
         self.lesson_id = lesson_id
         self.time_limit = time_limit
+        self.order = order
 
     def to_json(self) -> dict:
         return {
@@ -191,6 +257,31 @@ class Task(Base):
             "task_condition": self.task_condition,
             "time_limit": self.time_limit,
             "tests": self.tests["tests"][:2]
+        }
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(TEXT, nullable=False)
+    permissions = Column(TEXT, nullable=False)  # Формат и виды прописаны в Readme
+
+    users = orm.relationship("User", back_populates="role")
+
+    def __init__(self, title: str, permissions: str):
+        """
+        :param title: Название роли
+        :param permissions: Полномочия конкретной роли
+        """
+        self.title = title
+        self.permissions = permissions
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "permissions": self.permissions
         }
 
 
@@ -202,25 +293,27 @@ class User(Base):
     login = Column(TEXT, nullable=False, unique=True)
     email = Column(TEXT, nullable=False)
     password = Column(TEXT, nullable=False)
-    is_admin = Column(BOOLEAN, default=False)
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id"))
 
+    role = orm.relationship("Role")
     courses = orm.relationship("Course", secondary="users_to_courses",
                                backref="courses")
     solves = orm.relationship("Solve",
                               back_populates="user",
                               cascade="all, delete")
+    authors_courses = orm.relationship("Course", back_populates="author")
 
-    def __init__(self, name: str, login: str, email: str, is_admin: bool=False):
+    def __init__(self, name: str, login: str, email: str, role_id: uuid.UUID):
         """
         :param name: Имя пользователя
         :param login: Логин пользователя
         :param email: Почта пользователя
-        :param is_admin: True если пользователь - админ
+        :param role_id: ID роли
         """
         self.name = name
         self.login = login
         self.email = email
-        self.is_admin = is_admin
+        self.role_id = role_id
 
     def generate_hash_password(self, password: str):
         self.password = generate_password_hash(password)
@@ -234,7 +327,7 @@ class User(Base):
             "name": self.name,
             "login": self.login,
             "email": self.email,
-            "is_admin": self.is_admin,
+            "role": self.role.to_json(),
             "courses": [course.to_json() for course in self.courses]
         }
 
