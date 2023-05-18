@@ -42,7 +42,7 @@ def check_task_request(course_id, lesson_id, task_id, user):
     lesson = sess.get(Lesson, lesson_id)
     task = sess.get(Task, task_id)
 
-    if course not in user.courses and not user.is_admin:
+    if course not in user.courses and not user.check_perm("/c"):
         return {"status": "User not at course"}, 403
 
     if lesson not in course.lessons:
@@ -139,11 +139,12 @@ def login():
 def get_courses():
     sess = create_session()
     courses = sess.query(Course).all()
-    if get_jwt() and get_current_user().is_admin:
-        return {"courses": [course.to_json() for course in courses]}
-    else:
-        return {"courses": [course.to_json()
-                            for course in courses if course.is_public]}
+    if get_jwt():
+        user = get_current_user()
+        if user.check_perm("/c"):
+            return {"courses": [course.to_json() for course in courses]}
+    return {"courses": [course.to_json()
+                        for course in courses if course.is_public]}
 
 
 @app.route("/courses/attend/<course_id>")
@@ -157,7 +158,7 @@ def attend(course_id):
     if not course:
         return {"status": "Not found"}, 404
 
-    if not course.is_public and not user.is_admin:
+    if not course.is_public and not user.check_perm("/c"):
         return {"status": "Forbidden"}, 403
 
     if course in user.courses:
@@ -179,7 +180,7 @@ def get_course(course_id):
     if not course:
         return {"status": "Course not found"}, 404
 
-    if course not in user.courses and not user.is_admin:
+    if course not in user.courses and not user.check_perm("/c"):
         return {"status": "User not at course"}, 403
 
     return course.to_json()
@@ -193,7 +194,7 @@ def get_lesson(course_id, lesson_id):
     course = sess.get(Course, course_id)
     lesson = sess.get(Lesson, lesson_id)
 
-    if course not in user.courses and not user.is_admin:
+    if course not in user.courses and user.check_perm("/c"):
         return {"status": "User not at course"}, 403
 
     if lesson not in course.lessons:
@@ -225,7 +226,7 @@ def get_courses_of_user(user_id):
     if user == requested_user:
         return {"courses": [course.to_json() for course in user.courses]}
 
-    if user.is_admin:
+    if user.check_perm("/u"):
         return {
             "courses": [course.to_json() for course in requested_user.courses]
         }
@@ -282,7 +283,7 @@ def update_password(user_id):
     if "new_password" not in json:
         return {"status": "You have to send 'new_password'"}, 400
 
-    if user.is_admin and user != user_:
+    if user.check_perm("/U") and user != user_:
         user_.generate_hash_password(json["new_password"])
         sess.commit()
         return {"status": "OK"}
@@ -305,14 +306,14 @@ def update_password(user_id):
 def delete_course(course_id):
     user = get_current_user()
 
-    if not user.is_admin:
-        return {"status": "Forbidden"}, 403
-
     sess = create_session()
     course = sess.get(Course, course_id)
 
     if not course:
         return {"status": "Not found"}, 404
+
+    if user != course.author or not user.check_perm("/Ca"):
+        return {"status": "Forbidden"}, 403
 
     sess.delete(course)
     sess.commit()
@@ -324,14 +325,14 @@ def delete_course(course_id):
 def delete_lesson(course_id, lesson_id):
     user = get_current_user()
 
-    if not user.is_admin:
-        return {"status": "Forbidden"}, 403
-
     sess = create_session()
     course = sess.get(Course, course_id)
 
     if not course:
         return {"status": "Not found"}, 404
+
+    if user != course.author or not user.check_perm("/Ca"):
+        return {"status": "Forbidden"}, 403
 
     lesson = sess.get(Lesson, lesson_id)
 
@@ -351,14 +352,14 @@ def delete_lesson(course_id, lesson_id):
 def delete_task(course_id, lesson_id, task_id):
     user = get_current_user()
 
-    if not user.is_admin:
-        return {"status": "Forbidden"}, 403
-
     sess = create_session()
     course = sess.get(Course, course_id)
 
     if not course:
         return {"status": "Not found"}, 404
+
+    if user != course.author or not user.check_perm("/Ca"):
+        return {"status": "Forbidden"}, 403
 
     lesson = sess.get(Lesson, lesson_id)
 
@@ -387,14 +388,14 @@ def delete_task(course_id, lesson_id, task_id):
 def delete_link(course_id, lesson_id, link_id):
     user = get_current_user()
 
-    if not user.is_admin:
-        return {"status": "Forbidden"}, 403
-
     sess = create_session()
     course = sess.get(Course, course_id)
 
     if not course:
         return {"status": "Not found"}, 404
+
+    if user != course.author or not user.check_perm("/Ca"):
+        return {"status": "Forbidden"}, 403
 
     lesson = sess.get(Lesson, lesson_id)
 
@@ -425,7 +426,7 @@ def delete_user(user_id):
     sess = create_session()
     user_ = sess.get(User, user_id)
 
-    if not user.is_admin:
+    if not user.check_perm("/Ua"):
         return {"status": "Forbidden"}, 403
 
     if not user_:
@@ -441,7 +442,7 @@ def delete_user(user_id):
 def delete_languages(language_id):
     user = get_current_user()
 
-    if not user.is_admin:
+    if not user.check_perm("/Ca"):
         return {"status": "Forbidden"}, 403
 
     sess = create_session()
@@ -462,7 +463,7 @@ def refresh():
     refresh_jwt = session.get("jwt_refresh", None)
 
     if refresh_jwt is None:
-        return {"status": "Not authorized"}, 403
+        return {"status": "Not authorized"}, 401
 
     info = decode_token(refresh_jwt)
 
@@ -476,7 +477,7 @@ def refresh():
 def add_language():
     user = get_current_user()
 
-    if not user.is_admin:
+    if not user.check_perm("/Ca"):
         return {"status": "Forbidden"}, 403
 
     form = request.json
@@ -500,7 +501,7 @@ def add_language():
 def add_course():
     user = get_current_user()
 
-    if not user.is_admin:
+    if not user.check_perm("/C"):
         return {"status": "Forbidden"}, 403
 
     form = request.json
@@ -521,6 +522,7 @@ def add_course():
         return {"status": "Language not found"}, 404
 
     course = Course(name, description, pic, UUID(language_id), is_public)
+    course.author_id = user.id
 
     sess.add(course)
     sess.commit()
@@ -533,7 +535,7 @@ def add_course():
 def add_lesson():
     user = get_current_user()
 
-    if not user.is_admin:
+    if not user.check_perm("/C"):
         return {"status": "Forbidden"}, 403
 
     form = request.json
@@ -552,7 +554,15 @@ def add_lesson():
     if not course:
         return {"status": "Course not found"}, 404
 
-    lesson = Lesson(name, description, UUID(course_id))
+    if course.author.id != user.id:
+        return {"status": "Forbidden"}, 403
+
+    lessons = sess.query(Lesson).filter(Lesson.course_id == course.id).order_by(Lesson.order).all()
+
+    if lessons:
+        lesson = Lesson(name, description, UUID(course_id), 0)
+    else:
+        lesson = Lesson(name, description, UUID(course_id), lessons[-1].order + 1)
 
     sess.add(lesson)
     sess.commit()
@@ -584,7 +594,7 @@ def update_courses():
 
     user = get_current_user()
 
-    if not user.is_admin:
+    if not user.check_perm("/C"):
         return {"status": "Forbidden"}, 403
 
     form = request.json

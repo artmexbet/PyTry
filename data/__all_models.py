@@ -321,6 +321,15 @@ class User(Base):
     def check_password(self, password: str):
         return check_password_hash(self.password, password)
 
+    def check_perm(self, *permissions) -> bool:
+        """
+        Метод для проверки полномочий
+        :param permissions:
+        :type permissions: Tuple[str]
+        :return: True, если у пользователя есть переданные полномочия
+        """
+        return all([i in self.role.permissions or i.capitalize() in self.role.permissions for i in permissions])
+
     def to_json(self) -> dict:
         return {
             "id": self.id,

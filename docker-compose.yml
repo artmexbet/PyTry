@@ -17,6 +17,8 @@ services:
     environment:
       POSTGRES_PASSWORD: postgrespw
       POSTGRES_DB: PyTryDB
+    volumes:
+      - ./pg:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:

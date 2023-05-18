@@ -1,7 +1,7 @@
-FROM python:bullseye
+FROM ubuntu
 
-#RUN apt-get update
-#RUN apt-get install -y python3-pip python3
+RUN apt-get update
+RUN apt-get install -y python3-pip python3
 
 WORKDIR /app
 COPY requirements.txt requirements.txt
@@ -9,7 +9,7 @@ COPY requirements.txt requirements.txt
 RUN #python3 -m venv venv
 
 #CMD ["sudo", "venv/bin/pip"]
-RUN #pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
 RUN pip install -r requirements.txt
 
 COPY main.py main.py
