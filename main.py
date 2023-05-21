@@ -59,7 +59,7 @@ def prepare_starting():
 
     user_role = sess.query(Role).filter(Role.title == "user").first()
     if not user_role:
-        sess.add(Role("user", ""))
+        sess.add(Role("user", "/Ca /Ua"))
         sess.commit()
 
 
