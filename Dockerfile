@@ -18,6 +18,8 @@ COPY task_checking.py task_checking.py
 COPY config.py config.py
 COPY .env .env
 COPY add_user.py add_user.py
+COPY static static
+COPY tests tests
 
 # CMD ["pip", "install", "-r requirements.txt"]
 

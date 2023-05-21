@@ -504,14 +504,18 @@ def add_course():
     if not user.check_perm("/C"):
         return {"status": "Forbidden"}, 403
 
-    form = request.json
+    form = request.form
 
-    if any([i not in form for i in ["name", "description", "pic", "language_id", "is_public"]]):
+    if any([i not in form for i in ["name", "description", "language_id", "is_public"]]):
         return {"status": "Not all arguments"}, 400
+
+    files = request.files
+
+    if "pic" not in files:
+        return {"status": "Error! You have to sent pic"}, 400
 
     name = form["name"]
     description = form["description"]
-    pic = form["pic"]
     language_id = form["language_id"]
     is_public = bool(form["is_public"])
 
@@ -521,10 +525,15 @@ def add_course():
     if not language:
         return {"status": "Language not found"}, 404
 
-    course = Course(name, description, pic, UUID(language_id), is_public)
+    course = Course(name, description, UUID(language_id), is_public)
     course.author_id = user.id
 
     sess.add(course)
+    sess.commit()
+
+    pic = f"static/{course.id}.{files['pic'].filename.split('.')[-1]}"
+    files["pic"].save(pic)
+    course.pic = pic
     sess.commit()
 
     return {"status": "success", "course": course.to_json()}

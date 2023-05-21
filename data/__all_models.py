@@ -61,20 +61,18 @@ class Course(Base):
 
     def __init__(self, name: str,
                  description: str,
-                 pic: str,
                  language_id: uuid.UUID,
                  is_public=True):
         """
         :param name: Название курса
         :param description: Описание курса
-        :param pic: Путь до картинки в папке static
         :param language_id: UUID языка программирования,
          на котором решается курс
         :param is_public: True если курс публичный
         """
         self.name = name
         self.description = description
-        self.pic = pic
+        # self.pic = pic
         self.language_id = language_id
         self.is_public = is_public
 
