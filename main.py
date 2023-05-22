@@ -14,6 +14,8 @@ import logging
 from data.database import *
 from config import *
 
+from flask_session import Session
+
 logging.basicConfig(filename="runtime.log",
                     format='%(asctime)s %(levelname)s %(name)s %(message)s',
                     level=logging.DEBUG)
@@ -23,6 +25,9 @@ app.config["CORS_SUPPORTS_CREDENTIALS"] = True
 CORS(app, supports_credentials=True)
 app.config["JWT_SECRET_KEY"] = "SECRET_KEY"
 app.config["SECRET_KEY"] = "LONG_LONG_KEY"
+app.config["SESSION_TYPE"] = "filesystem"
+# app.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
+Session(app)
 jwt_manager = JWTManager(app)
 
 
