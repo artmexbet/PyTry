@@ -26,7 +26,8 @@ CORS(app, supports_credentials=True)
 app.config["JWT_SECRET_KEY"] = "SECRET_KEY"
 app.config["SECRET_KEY"] = "LONG_LONG_KEY"
 app.config["SESSION_TYPE"] = "filesystem"
-# app.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
+app.config["SESSION_COOKIE_HTTPONLY"] = False
+app.config["SESSION_COOKIE_SECURE"] = True
 Session(app)
 jwt_manager = JWTManager(app)
 
@@ -185,10 +186,12 @@ def get_course(course_id):
     if not course:
         return {"status": "Course not found"}, 404
 
-    if course not in user.courses and not user.check_perm("/c"):
-        return {"status": "User not at course"}, 403
+    resp = course.to_json()
 
-    return course.to_json()
+    if course not in user.courses and not user.check_perm("/c"):
+        resp.pop("lessons")
+
+    return resp
 
 
 @app.route("/courses/<course_id>/<lesson_id>")
@@ -460,6 +463,19 @@ def delete_languages(language_id):
     sess.delete(language)
     sess.commit()
     return {"status": "success"}
+
+
+@app.route("/languages")
+@jwt_required()
+def get_languages():
+    user = get_current_user()
+
+    if not user.check_perm("/C"):
+        return {"status": "Forbidden"}, 403
+
+    sess = create_session()
+
+    return {"languages": [language.to_json() for language in sess.query(Language).all()]}
 
 
 @app.route("/refresh")
