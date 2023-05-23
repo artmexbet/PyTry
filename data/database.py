@@ -15,7 +15,7 @@ def global_init(db_password, db_username, db_address, db_name):
     conn_str = f'postgresql://{db_username}:{db_password}@' \
                f'{db_address}/{db_name}'
     print(f"Подключение к базе данных по адресу {conn_str}")
-    engine = sa.create_engine(conn_str, echo=False)
+    engine = sa.create_engine(conn_str, echo=False, pool_size=0, max_overflow=25)
     __factory = orm.sessionmaker(bind=engine)
     from . import __all_models
     Base.metadata.create_all(engine)
