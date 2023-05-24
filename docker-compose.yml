@@ -8,6 +8,8 @@ services:
       - "5000:5000"
     depends_on:
       - db
+    volumes:
+      - ./static:/app/static
     networks:
       - my_network
     container_name: app
@@ -30,8 +32,6 @@ services:
       PGADMIN_DEFAULT_EMAIL: "maydurov2004@yandex.ru"
       PGADMIN_DEFAULT_PASSWORD: "123456"
       PGADMIN_CONFIG_SERVER_MODE: "False"
-    volumes:
-      - ./pgadmin:/var/lib/pgadmin
     ports:
       - "5050:80"
     restart: unless-stopped
