@@ -14,8 +14,6 @@ import logging
 from data.database import *
 from config import *
 
-from flask_session import Session
-
 logging.basicConfig(filename="runtime.log",
                     format='%(asctime)s %(levelname)s %(name)s %(message)s',
                     level=logging.DEBUG)
@@ -25,10 +23,6 @@ app.config["CORS_SUPPORTS_CREDENTIALS"] = True
 CORS(app, supports_credentials=True)
 app.config["JWT_SECRET_KEY"] = "SECRET_KEY"
 app.config["SECRET_KEY"] = "LONG_LONG_KEY"
-app.config["SESSION_TYPE"] = "filesystem"
-app.config["SESSION_COOKIE_HTTPONLY"] = False
-app.config["SESSION_COOKIE_SECURE"] = True
-Session(app)
 jwt_manager = JWTManager(app)
 
 
@@ -93,7 +87,7 @@ def reg():
     sess.add(user)
     sess.commit()
 
-    session["jwt_refresh"] = create_refresh_token(identity=user.id, additional_claims={"login": user.login})
+    refresh_token = create_refresh_token(identity=user.id, additional_claims={"login": user.login})
 
     return {
         "status": "success",
@@ -101,6 +95,7 @@ def reg():
                                           additional_claims={
                                               "login": user.login
                                           }),
+        "jwt_refresh": refresh_token,
         "user": user.to_json()
     }, 200
 
@@ -126,7 +121,7 @@ def login():
     if not user or not user.check_password(json["password"]):
         return {"status": "incorrect"}, 404
 
-    session["jwt_refresh"] = create_refresh_token(identity=user.id, additional_claims={"login": user.login})
+    refresh_token = create_refresh_token(identity=user.id, additional_claims={"login": user.login})
 
     return {
         "status": "success",
@@ -136,6 +131,7 @@ def login():
                 "login": user.login
             }
         ),
+        "jwt_refresh": refresh_token,
         "user": user.to_json()
     }, 200
 
@@ -187,9 +183,11 @@ def get_course(course_id):
         return {"status": "Course not found"}, 404
 
     resp = course.to_json()
+    resp["at_course"] = True
 
     if course not in user.courses and not user.check_perm("/c"):
         resp.pop("lessons")
+        resp["at_course"] = False
 
     return resp
 
@@ -269,11 +267,34 @@ def post_task(course_id, lesson_id, task_id):
                           task.tests, language.options, solve.id)
     thread = checker.run(sess)
 
-    while thread.is_alive():
-        sleep(0.5)
+    # while thread.is_alive():
+    #     sleep(0.5)
 
-    return jsonify({"verdict": checker.verdict,
-                    "time": checker.time_interval})
+    return {"status": "checking", "solve_id": solve.id}
+
+
+@app.route("/solves/<solve_id>")
+@jwt_required()
+def check_solve_status(solve_id):
+    user = get_current_user()
+
+    sess = create_session()
+
+    solve = sess.get(Solve, solve_id)
+
+    if not solve:
+        return {"status": "Solve not found"}, 404
+
+    if solve.user.id != user.id and not user.check_perm("/C"):
+        return {"status": "Forbidden"}, 403
+
+    if solve.verdict == "Check":
+        return {"status": "Checking", "is_checked": False}
+
+    info = solve.to_json()
+    info["is_checked"] = True
+
+    return info
 
 
 @app.route("/users/<user_id>/password", methods=["UPDATE"])
@@ -479,16 +500,16 @@ def get_languages():
 
 
 @app.route("/refresh")
-# @jwt_required(refresh=True)
+@jwt_required(refresh=True)
 def refresh():
-    refresh_jwt = session.get("jwt_refresh", None)
+    # refresh_jwt = session.get("jwt_refresh", None)
 
-    if refresh_jwt is None:
-        return {"status": "Not authorized"}, 401
+    # if refresh_jwt is None:
+    #     return {"status": "Not authorized"}, 401
 
-    info = decode_token(refresh_jwt)
+    # info = decode_token(refresh_jwt)
 
-    current_user = info["sub"]
+    current_user = get_jwt_identity()
     access_token = create_access_token(identity=current_user)
     return {'jwt_access': access_token}
 
@@ -611,7 +632,10 @@ def add_lesson():
 def get_user_info():
     user = get_current_user()
 
-    return {"info": user.to_json()}
+    user_info = user.to_json()
+    user_info.pop("courses")
+
+    return {"info": user_info}
 
 
 @app.route("/courses", methods=["UPDATE"])
