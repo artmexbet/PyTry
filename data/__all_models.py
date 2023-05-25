@@ -17,7 +17,8 @@ class Language(Base):
 
     courses = orm.relationship("Course",
                                back_populates="language",
-                               cascade="all, delete")
+                               cascade="all, delete",
+                               lazy="subquery")
 
     def __init__(self,
                  name: str,
@@ -54,10 +55,13 @@ class Course(Base):
     author = orm.relationship("User")
     lessons = orm.relationship("Lesson",
                                back_populates="course",
-                               cascade="all, delete")
+                               cascade="all, delete",
+                               lazy="subquery")
     users = orm.relationship("User", secondary="users_to_courses",
-                             backref="users")
-    pictures = orm.relationship("Picture", back_populates="course")
+                             backref="users",
+                             lazy="subquery")
+    pictures = orm.relationship("Picture", back_populates="course",
+                                lazy="subquery")
 
     def __init__(self, name: str,
                  description: str,
@@ -131,10 +135,12 @@ class Lesson(Base):
     course = orm.relationship("Course")
     links = orm.relationship("Link",
                              back_populates="lesson",
-                             cascade="all, delete")
+                             cascade="all, delete",
+                             lazy="subquery")
     tasks = orm.relationship("Task",
                              back_populates="lesson",
-                             cascade="all, delete")
+                             cascade="all, delete",
+                             lazy="subquery")
 
     def __init__(self, name: str, description: str, course_id: uuid.UUID, order: int):
         """
@@ -192,7 +198,8 @@ class TaskType(Base):
     title = Column(TEXT, nullable=False)
     format = Column(TEXT, nullable=False)
 
-    tasks = orm.relationship("Task", back_populates="task_type")
+    tasks = orm.relationship("Task", back_populates="task_type",
+                             lazy="subquery")
 
     def __init__(self, title: str, _format: str):
         """
@@ -226,7 +233,8 @@ class Task(Base):
     lesson = orm.relationship("Lesson")
     solves = orm.relationship("Solve",
                               back_populates="task",
-                              cascade="all, delete")
+                              cascade="all, delete",
+                              lazy="subquery")
 
     def __init__(self, name: str,
                  task_condition: str,
@@ -265,7 +273,8 @@ class Role(Base):
     title = Column(TEXT, nullable=False)
     permissions = Column(TEXT, nullable=False)  # Формат и виды прописаны в Readme
 
-    users = orm.relationship("User", back_populates="role")
+    users = orm.relationship("User", back_populates="role",
+                             lazy="subquery")
 
     def __init__(self, title: str, permissions: str):
         """
@@ -295,11 +304,13 @@ class User(Base):
 
     role = orm.relationship("Role")
     courses = orm.relationship("Course", secondary="users_to_courses",
-                               backref="courses")
+                               backref="courses",
+                               lazy="subquery")
     solves = orm.relationship("Solve",
                               back_populates="user",
                               cascade="all, delete")
-    authors_courses = orm.relationship("Course", back_populates="author")
+    authors_courses = orm.relationship("Course", back_populates="author",
+                                       lazy="subquery")
 
     def __init__(self, name: str, login: str, email: str, role_id: uuid.UUID):
         """

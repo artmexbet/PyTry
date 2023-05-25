@@ -29,8 +29,8 @@ jwt_manager = JWTManager(app)
 @jwt_manager.user_lookup_loader
 def take_user(header_data, payload_data) -> User:
     # print(header_data, payload_data)
-    sess = create_session()
-    user = sess.get(User, payload_data["sub"])
+    # sess = create_session()
+    user = g_sess.get(User, payload_data["sub"])
     return user
 
 
@@ -185,7 +185,7 @@ def get_course(course_id):
     resp = course.to_json()
     resp["at_course"] = True
 
-    if course not in user.courses and not user.check_perm("/c"):
+    if user not in course.users and not user.check_perm("/c"):
         resp.pop("lessons")
         resp["at_course"] = False
 
@@ -680,5 +680,5 @@ def update_courses():
 if __name__ == "__main__":
     global_init(db_password, db_username, db_address, db_name)
     prepare_starting()
-    # sess = create_session()
+    g_sess = create_session()
     app.run(threaded=True, debug=True, host="0.0.0.0", port=5000)
