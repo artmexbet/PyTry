@@ -339,6 +339,16 @@ class User(Base):
         """
         return all([i in self.role.permissions or i.capitalize() in self.role.permissions for i in permissions])
 
+    def check_course(self, course: Course) -> bool:
+        """
+        Метод проверяет нахождение пользователя на курсе
+        :param course: курс, нахождение на котором мы проверяем
+        """
+        for user_course in self.courses:
+            if course.id == user_course.id:
+                return True
+        return False
+
     def to_json(self) -> dict:
         return {
             "id": self.id,

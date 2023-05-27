@@ -163,7 +163,7 @@ def attend(course_id):
     if not course.is_public and not user.check_perm("/c"):
         return {"status": "Forbidden"}, 403
 
-    if course in user.courses:
+    if user.check_course(course):
         return {"status": "Already on course"}
 
     sess.add(Attendance(course.id, user.id))
@@ -185,7 +185,7 @@ def get_course(course_id):
     resp = course.to_json()
     resp["at_course"] = True
 
-    if user not in course.users and not user.check_perm("/c"):
+    if not user.check_course(course) and not user.check_perm("/c"):
         resp.pop("lessons")
         resp["at_course"] = False
 
