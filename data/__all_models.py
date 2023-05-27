@@ -83,6 +83,12 @@ class Course(Base):
     def __repr__(self):
         return f"<Course '{self.name}'>"
 
+    def check_user(self, user):
+        for user_at_course in self.users:
+            if user.id == user_at_course.id:
+                return True
+        return False
+
     def to_json(self) -> dict:
         return {
             "name": self.name,
@@ -337,7 +343,8 @@ class User(Base):
         :type permissions: Tuple[str]
         :return: True, если у пользователя есть переданные полномочия
         """
-        return all([i in self.role.permissions or i.capitalize() in self.role.permissions for i in permissions])
+        return all([i in self.role.permissions or f"/{i[1:].capitalize()}" in self.role.permissions
+                    for i in permissions])
 
     def check_course(self, course: Course) -> bool:
         """

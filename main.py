@@ -153,6 +153,7 @@ def get_courses():
 @jwt_required()
 def attend(course_id):
     sess = create_session()
+    sess.expire_on_commit = False
 
     user = get_current_user()
     course = sess.get(Course, course_id)
@@ -163,7 +164,7 @@ def attend(course_id):
     if not course.is_public and not user.check_perm("/c"):
         return {"status": "Forbidden"}, 403
 
-    if user.check_course(course):
+    if user.check_course(course) or course.check_user(user):
         return {"status": "Already on course"}
 
     sess.add(Attendance(course.id, user.id))
@@ -175,6 +176,7 @@ def attend(course_id):
 @jwt_required()
 def get_course(course_id):
     sess = create_session()
+    sess.expire_on_commit = False
 
     user = get_current_user()
     course = sess.get(Course, course_id)
@@ -229,7 +231,7 @@ def get_courses_of_user(user_id):
     if not requested_user:
         return {"status": "Not found"}, 404
 
-    if user == requested_user:
+    if user.id == requested_user.id:
         return {"courses": [course.to_json() for course in user.courses]}
 
     if user.check_perm("/u"):
@@ -681,4 +683,5 @@ if __name__ == "__main__":
     global_init(db_password, db_username, db_address, db_name)
     prepare_starting()
     g_sess = create_session()
+    g_sess.expire_on_commit = False
     app.run(threaded=True, debug=True, host="0.0.0.0", port=5000)
