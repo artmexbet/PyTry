@@ -187,7 +187,9 @@ def get_course(course_id):
     resp = course.to_json()
     resp["at_course"] = True
 
-    if not user.check_course(course) and not user.check_perm("/c"):
+    if user.check_perm("/c") and not user.check_course(course):
+        resp["at_course"] = False
+    elif not user.check_course(course):
         resp.pop("lessons")
         resp["at_course"] = False
 
