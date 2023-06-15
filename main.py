@@ -187,11 +187,12 @@ def get_course(course_id):
     resp = course.to_json()
     resp["at_course"] = True
 
-    if user.check_perm("/c") and not user.check_course(course):
+    attendance = sess.query(Attendance).filter(Attendance.user_id == user.id, Attendance.course_id == course.id).first()
+    if not attendance and user.check_perm("/c"):
         resp["at_course"] = False
-    elif not user.check_course(course):
+    elif not attendance:
+        resp["at_course"] = False
         resp.pop("lessons")
-        resp["at_course"] = False
 
     return resp
 
