@@ -205,7 +205,7 @@ def get_lesson(course_id, lesson_id):
     course = sess.get(Course, course_id)
     lesson = sess.get(Lesson, lesson_id)
 
-    if course not in user.courses and user.check_perm("/c"):
+    if course not in user.courses and not user.check_perm("/c"):
         return {"status": "User not at course"}, 403
 
     if lesson not in course.lessons:
@@ -615,7 +615,7 @@ def add_lesson():
 
     lessons = sess.query(Lesson).filter(Lesson.course_id == course.id).order_by(Lesson.order).all()
 
-    if lessons:
+    if not lessons:
         lesson = Lesson(name, description, UUID(course_id), 0)
     else:
         lesson = Lesson(name, description, UUID(course_id), lessons[-1].order + 1)
