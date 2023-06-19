@@ -166,7 +166,8 @@ class Lesson(Base):
             "name": self.name,
             "description": self.description,
             "tasks": [task.to_json() for task in self.tasks],
-            "links": [link.to_json() for link in self.links]
+            "links": [link.to_json() for link in self.links],
+            "order": self.order
         }
 
 
@@ -268,7 +269,8 @@ class Task(Base):
             "name": self.name,
             "task_condition": self.task_condition,
             "time_limit": self.time_limit,
-            "tests": self.tests["tests"][:2]
+            "tests": self.tests["tests"][:2],
+            "order": self.order
         }
 
 

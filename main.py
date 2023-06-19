@@ -1,3 +1,5 @@
+import json
+
 from flask import Flask, request, Response, jsonify, session
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, get_jwt
@@ -630,6 +632,46 @@ def add_lesson():
     sess.commit()
 
     return {"status": "success", "lesson": lesson.to_json()}
+
+
+@app.route("/tasks", methods=["POST"])
+@jwt_required()
+def add_task():
+    sess = create_session()
+    sess.expire_on_commit = False
+    user = get_current_user()
+
+    form = request.form
+
+    lesson_id = form.get("lesson_id", "")
+    lesson = sess.get(Lesson, lesson_id)
+
+    if not lesson:
+        return {"status": "Lesson not found"}, 404
+
+    course = sess.get(Course, lesson.course_id)
+
+    if not user.check_perm("/Ca") and course.author_id != user.id:
+        return {"status": "Forbidden: haven't permissions"}, 403
+
+    required_params = ["name", "task_condition", "tests", "time_limit"]
+
+    if any([i not in form for i in required_params]):
+        return {"status": "Not all arguments"}, 400
+
+    tasks = sess.query(Task).filter(Task.lesson_id == lesson_id).order_by(Task.order).all()
+
+    if not tasks:
+        task = Task(form["name"], form["task_condition"],
+                    json.loads(form["tests"]), UUID(form["lesson_id"]), 0)
+    else:
+        task = Task(form["name"], form["task_condition"],
+                    json.loads(form["tests"]), UUID(form["lesson_id"]), tasks[-1].order + 1)
+
+    sess.add(task)
+    sess.commit()
+
+    return {"status": "success", "task": task.to_json()}
 
 
 @app.route("/auth")
