@@ -103,7 +103,7 @@ _Важно!: при создании новых ролей делать сам�
 * is_public - bool
 * lessons - [lesson_info]
 
-### /courses/<course_id>/<lesson_id>
+### /lessons/<lesson_id>
 **GET**
 
 **JWT REQUIRED**
@@ -117,7 +117,7 @@ _Важно!: при создании новых ролей делать сам�
 * task - [task_info]
 * links - [link_info]
 
-### /courses/<course_id>/<lesson_id>/<task_id>
+### /tasks/<task_id>
 **GET**
 
 **JWT REQUIRED**
@@ -198,7 +198,7 @@ _Важно!: при создании новых ролей делать сам�
 
 * status
 
-### /courses/<course_id>/<lesson_id>
+### /lessons/<lesson_id>
 
 **DELETE**
 
@@ -208,7 +208,7 @@ _Важно!: при создании новых ролей делать сам�
 
 * status
 
-### /courses/<course_id>/<lesson_id>/<task_id>
+### /tasks/<task_id>
 
 **DELETE**
 
@@ -218,17 +218,8 @@ _Важно!: при создании новых ролей делать сам�
 
 * status
 
-### /courses/<course_id>/<lesson_id>
 
-**DELETE**
-
-**ADMIN JWT REQUIRED**
-
-**response:**
-
-* status
-
-### /courses/<course_id>/<lesson_id>/<link_id>
+### /links/<link_id>
 
 **DELETE**
 

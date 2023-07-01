@@ -266,6 +266,7 @@ class Task(Base):
 
     def to_json(self) -> dict:
         return {
+            "id": self.id,
             "name": self.name,
             "task_condition": self.task_condition,
             "time_limit": self.time_limit,

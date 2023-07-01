@@ -199,31 +199,37 @@ def get_course(course_id):
     return resp
 
 
-@app.route("/courses/<course_id>/<lesson_id>")
+@app.route("/lessons/<lesson_id>")
 @jwt_required()
-def get_lesson(course_id, lesson_id):
+def get_lesson(lesson_id):
     sess = create_session()
     user = get_current_user()
-    course = sess.get(Course, course_id)
     lesson = sess.get(Lesson, lesson_id)
 
-    if course not in user.courses and not user.check_perm("/c"):
-        return {"status": "User not at course"}, 403
-
-    if lesson not in course.lessons:
+    if not lesson:
         return {"status": "Not found"}, 404
+
+    if lesson.course not in user.courses and not user.check_perm("/c"):
+        return {"status": "User not at course"}, 403
 
     return lesson.to_json()
 
 
-@app.route("/courses/<course_id>/<lesson_id>/<task_id>")
+@app.route("/tasks/<task_id>")
 @jwt_required()
-def get_task(course_id, lesson_id, task_id):
+def get_task(task_id):
     user = get_current_user()
-    temp = check_task_request(course_id, lesson_id, task_id, user)
-    if isinstance(temp, tuple):
-        return temp
-    return temp.to_json()
+
+    sess = create_session()
+    task = sess.get(Task, task_id)
+
+    if not task:
+        return {"status": "Task not found"}, 404
+
+    if task.lesson.course not in user.courses and not user.check_perm("/c"):
+        return {"status": "Forbidden"}, 403
+
+    return task.to_json()
 
 
 @app.route("/user/courses/<user_id>")
@@ -247,16 +253,20 @@ def get_courses_of_user(user_id):
     return {"status": "Forbidden"}, 403
 
 
-@app.route("/courses/<course_id>/<lesson_id>/<task_id>", methods=["POST"])
+@app.route("/tasks/<task_id>", methods=["POST"])
 @jwt_required()
-def post_task(course_id, lesson_id, task_id):
+def post_task(task_id):
     sess = create_session()
     sess.expire_on_commit = False
     user = get_current_user()
-    task = check_task_request(course_id, lesson_id, task_id, user)
 
-    if isinstance(task, tuple):
-        return task
+    task = sess.get(Task, task_id)
+
+    if not task:
+        return {"status": "Task is not found"}, 404
+
+    if task.lesson.course not in user.courses and not user.check_perm("/c"):
+        return {"status": "Forbidden"}, 403
 
     json = request.json
 
@@ -356,98 +366,58 @@ def delete_course(course_id):
     return {"status": "success"}
 
 
-@app.route("/courses/<course_id>/<lesson_id>", methods=["DELETE"])
+@app.route("/lessons/<lesson_id>", methods=["DELETE"])
 @jwt_required()
-def delete_lesson(course_id, lesson_id):
+def delete_lesson(lesson_id):
     user = get_current_user()
 
     sess = create_session()
-    course = sess.get(Course, course_id)
-
-    if not course:
-        return {"status": "Not found"}, 404
-
-    if user != course.author or not user.check_perm("/Ca"):
-        return {"status": "Forbidden"}, 403
-
     lesson = sess.get(Lesson, lesson_id)
 
     if not lesson:
         return {"status": "Not found"}, 404
 
-    if lesson not in course.lessons:
-        return {"status": "Lesson is not bounded to this course"}, 400
+    if user != lesson.course.author or not user.check_perm("/Ca"):
+        return {"status": "Forbidden"}, 403
 
     sess.delete(lesson)
     sess.commit()
     return {"status": "success"}
 
 
-@app.route("/courses/<course_id>/<lesson_id>/<task_id>", methods=["DELETE"])
+@app.route("/tasks/<task_id>", methods=["DELETE"])
 @jwt_required()
-def delete_task(course_id, lesson_id, task_id):
+def delete_task(task_id):
     user = get_current_user()
 
     sess = create_session()
-    course = sess.get(Course, course_id)
-
-    if not course:
-        return {"status": "Not found"}, 404
-
-    if user != course.author or not user.check_perm("/Ca"):
-        return {"status": "Forbidden"}, 403
-
-    lesson = sess.get(Lesson, lesson_id)
-
-    if not lesson:
-        return {"status": "Not found"}, 404
-
-    if lesson not in course.lessons:
-        return {"status": "Lesson is not bounded to this course"}, 400
-
     task = sess.get(Task, task_id)
 
     if not task:
         return {"status": "Not found"}, 404
 
-    if task not in lesson.tasks:
-        return {"status": "Task is not bounded to this lesson"}, 400
+    if user != task.lesson.course.author or not user.check_perm("/Ca"):
+        return {"status": "Forbidden"}, 403
 
     sess.delete(task)
     sess.commit()
     return {"status": "success"}
 
 
-@app.route("/courses/<course_id>/<lesson_id>/<link_id>",
+@app.route("/links/<link_id>",
            methods=["DELETE"])
 @jwt_required()
-def delete_link(course_id, lesson_id, link_id):
+def delete_link(link_id):
     user = get_current_user()
 
     sess = create_session()
-    course = sess.get(Course, course_id)
-
-    if not course:
-        return {"status": "Not found"}, 404
-
-    if user != course.author or not user.check_perm("/Ca"):
-        return {"status": "Forbidden"}, 403
-
-    lesson = sess.get(Lesson, lesson_id)
-
-    if not lesson:
-        return {"status": "Not found"}, 404
-
-    if lesson not in course.lessons:
-        return {"status": "Lesson is not bounded to this course"}, 400
-
     link = sess.get(Link, link_id)
 
     if not link:
         return {"status": "Not found"}, 404
 
-    if link not in lesson.links:
-        return {"status": "Link is not bounded to this lesson"}, 400
+    if user != link.lesson.course.author or not user.check_perm("/Ca"):
+        return {"status": "Forbidden"}, 403
 
     sess.delete(link)
     sess.commit()
