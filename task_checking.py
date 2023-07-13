@@ -24,13 +24,14 @@ class TaskChecker:
         :param options: опции скрипта запуска
         :param solve_uuid: ID решения для создания потока
         """
-        test_path = os.path.join(os.getcwd(), "tests")
+        test_path = "/app/tests"
         if not os.path.exists(test_path):
             os.mkdir(test_path)
 
-        self.path_to_file = os.path.join(os.getcwd(),
-                                         "tests",
-                                         f"{solve_uuid}.py")
+        # self.path_to_file = os.path.join(os.getcwd(),
+        #                                  "tests",
+        #                                  f"{solve_uuid}.py")
+        self.path_to_file = f"/app/tests/{solve_uuid}.py"
         with open(self.path_to_file, "w") as f:
             f.write(code)
 
