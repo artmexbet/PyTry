@@ -35,6 +35,8 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
       - "5050:80"
+    volumes:
+      - ./pgadmin:/var/lib/pgadmin
     restart: unless-stopped
     deploy:
       resources:
