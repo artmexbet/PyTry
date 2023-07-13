@@ -229,6 +229,13 @@ def get_task(task_id):
     if task.lesson.course not in user.courses and not user.check_perm("/c"):
         return {"status": "Forbidden"}, 403
 
+    ok_solve = sess.query(Solve).filter(Solve.task_id == task.id, Solve.user_id == user.id,
+                                        Solve.verdict == "OK").first()
+    if ok_solve:
+        task["is_solved"] = True
+    else:
+        task["is_solved"] = False
+
     return task.to_json()
 
 
