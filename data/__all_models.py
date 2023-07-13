@@ -427,6 +427,7 @@ class Solve(Base):
             "id": self.id,
             "task": self.task.to_json(),
             "veridct": self.verdict,
+            "code": self.code,
             "time": self.time,
             "date": self.date
         }
