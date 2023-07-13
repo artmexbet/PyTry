@@ -314,6 +314,20 @@ def check_solve_status(solve_id):
     return info
 
 
+@app.route("/tasks/<task_id>/solves")
+@jwt_required()
+def get_task_solves(task_id):
+    user = get_current_user()
+
+    sess = create_session()
+    task = sess.get(Task, task_id)
+
+    if not task:
+        return {"status": "Not found"}, 404
+
+    return {"solves": [solve for solve in task.solves if solve.user_id == user.id]}
+
+
 @app.route("/users/<user_id>/password", methods=["UPDATE"])
 @jwt_required()
 def update_password(user_id):
