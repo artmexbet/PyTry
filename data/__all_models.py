@@ -426,7 +426,7 @@ class Solve(Base):
         return {
             "id": self.id,
             "task": self.task.to_json(),
-            "veridct": self.verdict,
+            "verdict": self.verdict,
             "code": self.code,
             "time": self.time,
             "date": self.date
