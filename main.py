@@ -325,7 +325,7 @@ def get_task_solves(task_id):
     if not task:
         return {"status": "Not found"}, 404
 
-    return {"solves": [solve for solve in task.solves if solve.user_id == user.id]}
+    return {"solves": [solve.to_json() for solve in task.solves if solve.user_id == user.id]}
 
 
 @app.route("/users/<user_id>/password", methods=["UPDATE"])
