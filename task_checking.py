@@ -24,14 +24,14 @@ class TaskChecker:
         :param options: опции скрипта запуска
         :param solve_uuid: ID решения для создания потока
         """
-        test_path = "/app/tests"
+        test_path = "tests"
         if not os.path.exists(test_path):
             os.mkdir(test_path)
 
         # self.path_to_file = os.path.join(os.getcwd(),
         #                                  "tests",
         #                                  f"{solve_uuid}.py")
-        self.path_to_file = f"/app/tests/{solve_uuid}.py"
+        self.path_to_file = f"tests/{solve_uuid}.py"
         with open(self.path_to_file, "w") as f:
             f.write(code)
 
@@ -71,14 +71,13 @@ class TaskChecker:
 
             is_timeout_expired = False
             # Открытие потока выполнения программы
-            with Popen(
-                    f'{self.path} {self.options} "{self.path_to_file}"',
-                    stdin=PIPE,
-                    stdout=out,
-                    stderr=err,
-                    encoding="utf8",
-                    text=True
-            ) as process:
+            with Popen([self.path, self.path_to_file],
+                       stdin=PIPE,
+                       stdout=out,
+                       stderr=err,
+                       encoding="utf8",
+                       text=True
+                       ) as process:
                 try:
                     stdout, stderr = process.communicate(test["input"],
                                                          self.timeout)
