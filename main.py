@@ -212,7 +212,16 @@ def get_lesson(lesson_id):
     if lesson.course not in user.courses and not user.check_perm("/c"):
         return {"status": "User not at course"}, 403
 
-    return lesson.to_json()
+    data = lesson.to_json()
+    for task in data["tasks"]:
+        temp = sess.query(Solve).filter(Solve.verdict == "OK", Solve.task_id == task["id"],
+                                        Solve.user_id == user.id).all()
+        if temp:
+            task["is_solved"] = True
+        else:
+            task["is_solved"] = False
+
+    return data
 
 
 @app.route("/tasks/<task_id>")
