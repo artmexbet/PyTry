@@ -218,7 +218,7 @@ def get_lesson(lesson_id):
                                         Solve.user_id == user.id).all()
         if not temp:
             task["not_solved"] = True
-        elif any([i["verdict"] == "OK" for i in temp]):
+        elif any([i.verdict == "OK" for i in temp]):
             task["is_solved"] = True
         else:
             task["is_solved"] = False
