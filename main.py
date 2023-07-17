@@ -214,9 +214,11 @@ def get_lesson(lesson_id):
 
     data = lesson.to_json()
     for task in data["tasks"]:
-        temp = sess.query(Solve).filter(Solve.verdict == "OK", Solve.task_id == task["id"],
+        temp = sess.query(Solve).filter(Solve.task_id == task["id"],
                                         Solve.user_id == user.id).all()
-        if temp:
+        if not temp:
+            task["not_solved"] = True
+        elif any([i["verdict"] == "OK" for i in temp]):
             task["is_solved"] = True
         else:
             task["is_solved"] = False
