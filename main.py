@@ -242,12 +242,14 @@ def get_task(task_id):
 
     ok_solve = sess.query(Solve).filter(Solve.task_id == task.id, Solve.user_id == user.id,
                                         Solve.verdict == "OK").first()
+    task = task.to_json()
+
     if ok_solve:
         task["is_solved"] = True
     else:
         task["is_solved"] = False
 
-    return task.to_json()
+    return task
 
 
 @app.route("/user/courses/<user_id>")
